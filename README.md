@@ -36,7 +36,9 @@ Optional (IDC-style externalized config):
 The workflow runs:
 
 ```bash
-PUBLIC_URL=/ APP_CONFIG=config/google.js yarn --cwd platform/app run build:viewer
+corepack enable
+pnpm install --frozen-lockfile
+PUBLIC_URL=/ pnpm --filter @ohif/app run build:viewer:qa
 ```
 
 Output is deployed from `platform/app/dist` using `firebase.json` at the Viewers repo root.

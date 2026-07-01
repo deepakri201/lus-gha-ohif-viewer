@@ -1,0 +1,50 @@
+name: ohif/deploy-lus-viewer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    container:
+      image: node:20
+
+    steps:
+      - name: Checkout deployment repo
+        uses: actions/checkout@v4
+
+      - name: Clone and install Viewers fork
+        run: |
+          git clone https://github.com/deepakri201/Viewers.git
+          cd Viewers
+          git checkout "${{ vars.VIEWERS_REF || 'add_gcp_and_sr' }}"
+          yarn install --frozen-lockfile
+
+      - name: Apply optional external config
+        run: |
+          cd Viewers
+          if [ -n "${{ vars.OHIF_FIREBASE_JSON_URL }}" ]; then
+            wget -O ./firebase.json "${{ vars.OHIF_FIREBASE_JSON_URL }}"
+          fi
+          if [ -n "${{ vars.OHIF_CONFIG_JS_URL }}" ]; then
+            wget -O ./platform/app/public/config/google.js "${{ vars.OHIF_CONFIG_JS_URL }}"
+          fi
+
+      - name: Build OHIF viewer
+        run: |
+          cd Viewers
+          PUBLIC_URL=/ APP_CONFIG=config/google.js yarn --cwd platform/app run build:viewer
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0.10.0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          expires: 5d
+          projectId: "${{ vars.FIREBASE_PROJECT_ID }}"
+          entryPoint: ./Viewers
+          channelId: live

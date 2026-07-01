@@ -33,10 +33,9 @@ Optional (IDC-style externalized config):
 
 ## Build
 
-The workflow runs:
+The workflow runs (via `pnpm/action-setup` + Node 24):
 
 ```bash
-corepack enable
 pnpm install --frozen-lockfile
 PUBLIC_URL=/ pnpm --filter @ohif/app run build:viewer:qa
 ```

@@ -10,26 +10,36 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
-    container:
-      image: node:24
-
     steps:
       - name: Checkout deployment repo
         uses: actions/checkout@v4
 
-      - name: Enable Corepack for pnpm
-        run: corepack enable
-
-      - name: Clone and install Viewers fork
+      - name: Clone Viewers fork
         run: |
           git clone https://github.com/deepakri201/Viewers.git
           cd Viewers
           git checkout "${{ vars.VIEWERS_REF || 'add_gcp_and_sr' }}"
-          pnpm install --frozen-lockfile
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: Viewers/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: Viewers
+        run: pnpm install --frozen-lockfile
 
       - name: Apply optional external config
+        working-directory: Viewers
         run: |
-          cd Viewers
           if [ -n "${{ vars.OHIF_FIREBASE_JSON_URL }}" ]; then
             wget -O ./firebase.json "${{ vars.OHIF_FIREBASE_JSON_URL }}"
           fi
@@ -38,9 +48,8 @@ jobs:
           fi
 
       - name: Build OHIF viewer
-        run: |
-          cd Viewers
-          PUBLIC_URL=/ pnpm --filter @ohif/app run build:viewer:qa
+        working-directory: Viewers
+        run: PUBLIC_URL=/ pnpm --filter @ohif/app run build:viewer:qa
 
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
